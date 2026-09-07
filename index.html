@@ -1,27 +1,593 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Deriv Digit Analyzer</title>
-  <style>body{font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;max-width:800px;margin:4rem auto;padding:0 1rem;color:#111}header{margin-bottom:1rem} code{background:#f4f4f4;padding:.2rem .4rem;border-radius:4px}</style>
+  <meta charset="utf-8" />
+  <title>Deriv Digit Analyzer — Dark Theme</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="description" content="Analysis-only Deriv digit analyzer with dark theme, histogram and sparkline visualization." />
+  <style>
+    :root{
+      --bg-dark: #0f1720; --panel-dark: #0b1220; --muted-dark:#9aa4b2; --accent:#7dd3fc; --accent-2:#60a5fa; --ok:#34d399; --warn:#f59e0b;
+      --radius:10px; --pad:14px;
+      --glass: rgba(255,255,255,0.03);
+      --glass-2: rgba(255,255,255,0.02);
+    }
+    [data-theme="light"]{
+      --bg-dark: #f6f8fb; --panel-dark: #ffffff; --muted-dark:#5b6b78; --accent:#0369a1; --accent-2:#2563eb; --ok:#059669; --warn:#b45309;
+      --glass: rgba(0,0,0,0.03); --glass-2: rgba(0,0,0,0.02);
+    }
+
+    html,body{height:100%;margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial;background:var(--bg-dark);color:#e6eef6}
+    .app{max-width:1200px;margin:18px auto;padding:16px;box-sizing:border-box}
+    .topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+    .title{display:flex;align-items:baseline;gap:12px}
+    h1{margin:0;font-size:20px}
+    .subtitle{color:var(--muted-dark);font-size:13px}
+    .controls{display:flex;gap:12px;align-items:center}
+    select,input[type="number"]{background:var(--panel-dark);border:1px solid rgba(255,255,255,0.04);color:inherit;padding:8px;border-radius:8px}
+    button{background:linear-gradient(90deg,var(--accent),var(--accent-2));color:#002033;border:0;padding:8px 12px;border-radius:8px;cursor:pointer;font-weight:600}
+    button.ghost{background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--accent)}
+    .layout{display:grid;grid-template-columns:320px 1fr 360px;gap:14px;align-items:start}
+    .panel{background:linear-gradient(180deg,var(--panel-dark),var(--glass));border-radius:var(--radius);padding:12px;box-shadow:0 6px 18px rgba(2,6,23,0.6);border:1px solid rgba(255,255,255,0.03)}
+    .panel.small{padding:10px}
+    .label{font-size:13px;color:var(--muted-dark);margin-bottom:6px}
+    .tick-list{height:260px;overflow:auto;background:transparent;padding:6px;border-radius:8px;border:1px dashed rgba(255,255,255,0.02);font-family:Menlo,monospace;font-size:13px;color:var(--muted-dark)}
+    .metrics{display:flex;gap:10px;flex-wrap:wrap}
+    .metric{flex:1;min-width:150px;background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent);padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.02)}
+    .metric .big{font-size:20px;font-weight:700}
+    .metric .desc{font-size:12px;color:var(--muted-dark);margin-top:6px}
+    .digits-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:10px}
+    .digit-box{background:var(--glass-2);padding:10px;border-radius:8px;text-align:center}
+    .digit-box .num{font-size:16px;font-weight:800}
+    .digit-box .sub{font-size:12px;color:var(--muted-dark);margin-top:6px}
+    .chart-wrap{display:flex;flex-direction:column;gap:8px}
+    .chart-title{font-size:13px;color:var(--muted-dark)}
+    canvas#spark{width:100%;height:64px;background:transparent;border-radius:6px}
+    svg#hist{width:100%;height:160px}
+    .alerts{margin-top:8px}
+    .alert{padding:10px;border-radius:8px;background:linear-gradient(90deg, rgba(245,158,11,0.08), rgba(255,255,255,0.01));border:1px solid rgba(245,158,11,0.12);color:var(--warn)}
+    .small{font-size:13px;color:var(--muted-dark)}
+    footer{margin-top:14px;color:var(--muted-dark);font-size:13px;text-align:center}
+    @media(max-width:1100px){ .layout{grid-template-columns:1fr; } .panel{margin-bottom:10px} }
+  </style>
 </head>
-<body>
-  <header>
-    <h1>Deriv Digit Analyzer</h1>
-    <p>Placeholder site for the Deriv Digit Analyzer project. Replace with your app files (HTML/CSS/JS) or a build output.</p>
-  </header>
-  <main>
-    <p>Repository: <a href="https://github.com/benardsilvanus0-prog/deriv-digit-analyzer">benardsilvanus0-prog/deriv-digit-analyzer</a></p>
-    <p>To publish your app on GitHub Pages:</p>
-    <ol>
-      <li>Add your site files to the repository root (index.html, assets), or put them in a <code>docs/</code> folder.</li>
-      <li>Or publish the built site to a <code>gh-pages</code> branch and set Pages source to that branch.</li>
-    </ol>
-    <p id="status"></p>
-  </main>
+<body data-theme="dark">
+  <div class="app">
+    <div class="topbar">
+      <div class="title">
+        <h1>Deriv Digit Analyzer</h1>
+        <div class="subtitle">Visual dark theme — analysis-only</div>
+      </div>
+
+      <div class="controls">
+        <div style="display:flex;gap:8px;align-items:center">
+          <label class="small" for="themeToggle">Theme</label>
+          <select id="themeToggle" title="Select theme">
+            <option value="dark">Dark</option>
+            <option value="light">Light</option>
+          </select>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button id="connectBtn">Connect</button>
+          <button id="disconnectBtn" class="ghost" disabled>Disconnect</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="layout">
+      <!-- Left: Controls -->
+      <div class="panel small">
+        <div class="label">Market</div>
+        <select id="market" style="width:100%">
+          <option>R_10</option>
+          <option>R_25</option>
+          <option>R_50</option>
+          <option>R_75</option>
+          <option selected>R_100</option>
+        </select>
+
+        <div style="height:10px"></div>
+
+        <div class="label">Ticks buffer</div>
+        <select id="bufferSize" style="width:100%">
+          <option value="100">100</option>
+          <option value="500">500</option>
+          <option value="1000" selected>1000</option>
+        </select>
+
+        <div style="height:10px"></div>
+
+        <div class="label">Alert threshold (%)</div>
+        <input id="threshold" type="number" min="51" max="99" value="70" style="width:100%" />
+
+        <div style="height:12px"></div>
+
+        <div style="display:flex;gap:8px">
+          <button id="historyBtn" class="ghost">Load history</button>
+          <button id="clearBuffer" class="ghost">Clear</button>
+        </div>
+
+        <div style="height:12px"></div>
+
+        <div class="small">Export</div>
+        <div style="display:flex;gap:8px;margin-top:6px">
+          <button id="exportCsv" class="ghost">CSV</button>
+          <button id="exportJson" class="ghost">JSON</button>
+        </div>
+
+        <div style="height:14px"></div>
+        <div class="small">Status: <span id="wsState">disconnected</span></div>
+        <div style="height:8px"></div>
+        <div class="small">Last server message (truncated):</div>
+        <pre id="lastResp" style="white-space:pre-wrap;max-height:160px;overflow:auto;background:transparent;padding:6px;border-radius:6px;border:1px dashed rgba(255,255,255,0.02);margin-top:8px">—</pre>
+      </div>
+
+      <!-- Center: Metrics -->
+      <div class="panel">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <div class="small">Live metrics (last <span id="displayBuffer">1000</span> ticks)</div>
+            <div style="height:6px"></div>
+            <div class="metrics">
+              <div class="metric">
+                <div class="big" id="evenBig">0%</div>
+                <div class="desc">Even (0,2,4,6,8) — <span id="evenCount">0</span> ticks</div>
+              </div>
+              <div class="metric">
+                <div class="big" id="oddBig">0%</div>
+                <div class="desc">Odd (1,3,5,7,9) — <span id="oddCount">0</span> ticks</div>
+              </div>
+              <div class="metric">
+                <div class="big" id="underBig">0%</div>
+                <div class="desc">Under (0-4) — <span id="underCount">0</span> ticks</div>
+              </div>
+              <div class="metric">
+                <div class="big" id="overBig">0%</div>
+                <div class="desc">Over (5-9) — <span id="overCount">0</span> ticks</div>
+              </div>
+            </div>
+          </div>
+
+          <div style="min-width:160px;text-align:right">
+            <div class="small">Last tick time</div>
+            <div style="font-weight:700;margin-top:6px" id="lastEpoch">—</div>
+            <div style="height:8px"></div>
+            <div class="small">Total</div>
+            <div style="font-weight:700" id="totalCount">0</div>
+          </div>
+        </div>
+
+        <div style="height:14px"></div>
+
+        <div style="display:flex;gap:12px;align-items:flex-start">
+          <div style="flex:1">
+            <div class="chart-wrap">
+              <div class="chart-title">Digit histogram</div>
+              <svg id="hist" viewBox="0 0 500 160" preserveAspectRatio="none" aria-label="digit histogram"></svg>
+            </div>
+          </div>
+
+          <div style="width:220px">
+            <div class="chart-wrap">
+              <div class="chart-title">Recent digits (sparkline)</div>
+              <canvas id="spark" width="220" height="64"></canvas>
+            </div>
+
+            <div style="height:10px"></div>
+
+            <div class="small">Alerts</div>
+            <div id="alerts" class="alerts" style="margin-top:8px">No alerts</div>
+          </div>
+        </div>
+
+        <div style="height:12px"></div>
+
+        <div class="small">Digits detail</div>
+        <div class="digits-grid" id="digitDetails" style="margin-top:8px"></div>
+
+        <div style="height:12px"></div>
+
+        <div class="small">Recent ticks</div>
+        <div id="ticks" class="tick-list" aria-live="polite">No ticks yet.</div>
+      </div>
+
+      <!-- Right: Info -->
+      <div class="panel small">
+        <div class="small">Connection controls & logs</div>
+        <div style="height:8px"></div>
+        <div class="small">Auto-reconnect: <span id="autoReconnect">enabled</span></div>
+        <div style="height:12px"></div>
+        <div class="small">Settings persistence: stored in localStorage</div>
+        <div style="height:12px"></div>
+        <div class="small">Notes</div>
+        <ul style="color:var(--muted-dark);padding-left:18px">
+          <li>Analysis-only: no trading or authorization</li>
+          <li>SVG histogram & canvas sparkline are lightweight</li>
+          <li>Use Export to download buffer</li>
+        </ul>
+      </div>
+    </div>
+
+    <footer>
+      Version 1.1 • Theme & view updated • Analysis-only
+    </footer>
+  </div>
+
   <script>
-    document.getElementById('status').textContent = 'Published: ' + new Date().toLocaleString();
+  (function(){
+    // --- core state & DOM refs ---
+    const endpoint = 'wss://ws.binaryws.com/websockets/v3?app_id=1089';
+    let ws = null;
+    let ticksBuffer = [];
+    let bufferSize = Number(localStorage.getItem('dda_buffer')) || 1000;
+    let autoReconnect = localStorage.getItem('dda_autoreconnect') !== 'false';
+    let throttleMs = 200;
+    let lastRender = 0;
+    let pending = false;
+
+    // DOM
+    const themeToggle = document.getElementById('themeToggle');
+    const connectBtn = document.getElementById('connectBtn');
+    const disconnectBtn = document.getElementById('disconnectBtn');
+    const historyBtn = document.getElementById('historyBtn');
+    const marketEl = document.getElementById('market');
+    const bufferEl = document.getElementById('bufferSize');
+    const thresholdEl = document.getElementById('threshold');
+    const displayBufferEl = document.getElementById('displayBuffer');
+    const ticksEl = document.getElementById('ticks');
+    const lastEpochEl = document.getElementById('lastEpoch');
+    const wsStateEl = document.getElementById('wsState');
+    const lastRespEl = document.getElementById('lastResp');
+    const alertsEl = document.getElementById('alerts');
+    const histSvg = document.getElementById('hist');
+    const sparkCanvas = document.getElementById('spark');
+    const digitDetailsEl = document.getElementById('digitDetails');
+
+    const evenBig = document.getElementById('evenBig');
+    const oddBig = document.getElementById('oddBig');
+    const underBig = document.getElementById('underBig');
+    const overBig = document.getElementById('overBig');
+    const evenCountEl = document.getElementById('evenCount');
+    const oddCountEl = document.getElementById('oddCount');
+    const underCountEl = document.getElementById('underCount');
+    const overCountEl = document.getElementById('overCount');
+    const totalCountEl = document.getElementById('totalCount');
+
+    const exportCsvBtn = document.getElementById('exportCsv');
+    const exportJsonBtn = document.getElementById('exportJson');
+    const clearBufferBtn = document.getElementById('clearBuffer');
+
+    // Init UI from storage
+    function initUI() {
+      const savedMarket = localStorage.getItem('dda_market');
+      if (savedMarket) {
+        const found = Array.from(marketEl.options).some(o => o.value === savedMarket);
+        if (!found) {
+          const opt = document.createElement('option'); opt.text = savedMarket; opt.value = savedMarket; marketEl.appendChild(opt);
+        }
+        marketEl.value = savedMarket;
+      }
+      bufferEl.value = bufferSize;
+      displayBufferEl.textContent = bufferSize;
+      thresholdEl.value = localStorage.getItem('dda_threshold') || 70;
+      themeToggle.value = localStorage.getItem('dda_theme') || 'dark';
+      document.body.setAttribute('data-theme', themeToggle.value);
+    }
+    initUI();
+
+    // Digit detail boxes
+    function renderDigitBoxes(counts=[], total=0) {
+      digitDetailsEl.innerHTML = '';
+      for (let d=0; d<=9; d++) {
+        const cnt = counts[d] || 0;
+        const prob = total ? (cnt/total*100) : 0;
+        const div = document.createElement('div');
+        div.className = 'digit-box';
+        div.innerHTML = `<div class="num">${d}</div><div class="sub">${cnt} • ${prob.toFixed(2)}%</div>`;
+        digitDetailsEl.appendChild(div);
+      }
+    }
+    renderDigitBoxes();
+
+    // Helpers
+    function extractLastDigit(quote) {
+      if (quote === null || quote === undefined) return null;
+      const s = String(quote);
+      for (let i=s.length-1;i>=0;i--){
+        const ch = s[i];
+        if (ch >= '0' && ch <= '9') return Number(ch);
+      }
+      return null;
+    }
+
+    function pushTick(quote, epoch) {
+      const t = { quote:String(quote), epoch: Number(epoch) || Math.floor(Date.now()/1000) };
+      ticksBuffer.push(t);
+      if (ticksBuffer.length > bufferSize) ticksBuffer.splice(0, ticksBuffer.length - bufferSize);
+      scheduleRender();
+    }
+    function clearBuffer() { ticksBuffer = []; scheduleRender(true); }
+
+    // Rendering (throttle)
+    function scheduleRender(force=false) {
+      const now = Date.now();
+      if (force || now - lastRender >= throttleMs) { renderAll(); }
+      else if (!pending) {
+        pending = true;
+        setTimeout(()=>{ pending=false; renderAll(); }, throttleMs - (now - lastRender));
+      }
+    }
+
+    function renderAll() {
+      lastRender = Date.now();
+      // ticks list (newest first)
+      ticksEl.innerHTML = '';
+      for (let i = ticksBuffer.length-1; i >= 0; i--) {
+        const t = ticksBuffer[i];
+        const d = extractLastDigit(t.quote);
+        const el = document.createElement('div');
+        el.textContent = `${new Date(t.epoch*1000).toLocaleTimeString()}  ${t.quote} ${d!==null? '('+d+')' : ''}`;
+        ticksEl.appendChild(el);
+      }
+      lastEpochEl.textContent = ticksBuffer.length ? new Date(ticksBuffer[ticksBuffer.length-1].epoch*1000).toLocaleString() : '—';
+
+      // compute counts & probs
+      const counts = Array(10).fill(0);
+      ticksBuffer.forEach(t => {
+        const d = extractLastDigit(t.quote);
+        if (d !== null) counts[d]++;
+      });
+      const total = counts.reduce((a,b)=>a+b,0);
+
+      // even/odd/over/under
+      const evenDigits = [0,2,4,6,8], oddDigits=[1,3,5,7,9];
+      const evenCount = evenDigits.reduce((s,d)=>s+counts[d],0);
+      const oddCount = oddDigits.reduce((s,d)=>s+counts[d],0);
+      const underCount = [0,1,2,3,4].reduce((s,d)=>s+counts[d],0);
+      const overCount = [5,6,7,8,9].reduce((s,d)=>s+counts[d],0);
+      const evenProb = total ? evenCount/total*100 : 0;
+      const oddProb = total ? oddCount/total*100 : 0;
+      const underProb = total ? underCount/total*100 : 0;
+      const overProb = total ? overCount/total*100 : 0;
+
+      evenBig.textContent = evenProb.toFixed(2) + '%';
+      oddBig.textContent = oddProb.toFixed(2) + '%';
+      underBig.textContent = underProb.toFixed(2) + '%';
+      overBig.textContent = overProb.toFixed(2) + '%';
+
+      evenCountEl.textContent = evenCount;
+      oddCountEl.textContent = oddCount;
+      underCountEl.textContent = underCount;
+      overCountEl.textContent = overCount;
+      totalCountEl.textContent = total;
+
+      // digit detail boxes
+      renderDigitBoxes(counts, total);
+
+      // histogram
+      renderHistogram(counts, total);
+
+      // sparkline
+      renderSparkline();
+
+      // alerts
+      renderAlerts(counts, total);
+    }
+
+    // Histogram SVG renderer
+    function renderHistogram(counts, total) {
+      const svg = histSvg;
+      const W = 500, H = 160, pad = 10;
+      const maxCount = Math.max(...counts, 1);
+      svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+      const barGap = 6;
+      const barWidth = (W - pad*2 - barGap*9) / 10;
+      // create bars
+      let inner = '';
+      for (let i=0;i<=9;i++){
+        const c = counts[i] || 0;
+        const h = (c / maxCount) * (H - pad*2);
+        const x = pad + i*(barWidth + barGap);
+        const y = H - pad - h;
+        const pct = total? (c/total*100).toFixed(2) : '0.00';
+        inner += `<g><rect x="${x}" y="${y}" width="${barWidth}" height="${h}" rx="4" fill="url(#g${i})"></rect><text x="${x+barWidth/2}" y="${H-pad+14}" fill="#9aa4b2" font-size="12" text-anchor="middle">${i}</text><text x="${x+barWidth/2}" y="${y-6}" fill="#cdefff" font-size="11" text-anchor="middle">${pct}%</text></g>`;
+      }
+      // build gradients defs
+      let defs = '';
+      for (let i=0;i<=9;i++){
+        defs += `<linearGradient id="g${i}" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="${i%2? '#60a5fa':'#7dd3fc'}" stop-opacity="0.95"/><stop offset="100%" stop-color="#0b1220" stop-opacity="0.35"/></linearGradient>`;
+      }
+      svg.innerHTML = `<defs>${defs}</defs><rect x="0" y="0" width="${W}" height="${H}" fill="transparent"></rect>${inner}`;
+    }
+
+    // Sparkline renderer (canvas) — plot last N digits as circles, color-coded
+    function renderSparkline() {
+      const canvas = sparkCanvas;
+      const ctx = canvas.getContext('2d');
+      const DPR = window.devicePixelRatio || 1;
+      const W = canvas.width = canvas.clientWidth * DPR;
+      const H = canvas.height = canvas.clientHeight * DPR;
+      ctx.clearRect(0,0,W,H);
+      const sample = ticksBuffer.slice(-40); // last 40 points
+      const len = sample.length;
+      if (!len) return;
+      const pad = 6*DPR;
+      const gap = (W - pad*2) / Math.max(1,len-1);
+      for (let i=0;i<len;i++){
+        const t = sample[i];
+        const d = extractLastDigit(t.quote);
+        const x = pad + i*gap;
+        // map digit 0..9 to y (higher digit lower y)
+        const y = pad + (H - pad*2) * (1 - (d !== null ? d/9 : 0.5));
+        const color = d === null ? '#7a8592' : (d%2===0 ? '#34d399' : '#60a5fa');
+        ctx.beginPath();
+        ctx.fillStyle = color;
+        ctx.arc(x, y, 3*DPR, 0, Math.PI*2);
+        ctx.fill();
+      }
+      // connect line
+      ctx.beginPath();
+      for (let i=0;i<len;i++){
+        const t = sample[i];
+        const d = extractLastDigit(t.quote);
+        const x = pad + i*gap;
+        const y = pad + (H - pad*2) * (1 - (d !== null ? d/9 : 0.5));
+        if (i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+      }
+      ctx.strokeStyle = 'rgba(125,211,252,0.6)';
+      ctx.lineWidth = 1.5*DPR;
+      ctx.stroke();
+    }
+
+    // Alerts rendering
+    function renderAlerts(counts,total) {
+      const threshold = Math.max(51, Math.min(99, Number(thresholdEl.value) || 70));
+      const list = [];
+      for (let d=0; d<=9; d++) {
+        const p = total ? counts[d]/total*100 : 0;
+        if (p >= threshold) list.push({type:'digit',digit:d,prob:p});
+      }
+      const evenProb = total ? ([0,2,4,6,8].reduce((s,i)=>s+counts[i],0)/total*100) : 0;
+      const oddProb = total ? ([1,3,5,7,9].reduce((s,i)=>s+counts[i],0)/total*100) : 0;
+      const underProb = total ? ([0,1,2,3,4].reduce((s,i)=>s+counts[i],0)/total*100) : 0;
+      const overProb = total ? ([5,6,7,8,9].reduce((s,i)=>s+counts[i],0)/total*100) : 0;
+      if (evenProb >= threshold) list.push({type:'even',prob:evenProb});
+      if (oddProb >= threshold) list.push({type:'odd',prob:oddProb});
+      if (underProb >= threshold) list.push({type:'under',prob:underProb});
+      if (overProb >= threshold) list.push({type:'over',prob:overProb});
+
+      if (!list.length) { alertsEl.innerHTML = '<div class="small">No alerts (no metric >= threshold)</div>'; return; }
+      alertsEl.innerHTML = '';
+      list.forEach(a => {
+        const div = document.createElement('div');
+        div.className = 'alert';
+        if (a.type === 'digit') div.innerHTML = `<div><strong>Digit ${a.digit}</strong> — ${a.prob.toFixed(2)}%</div><div class="small">Based on last ${ticksBuffer.length} ticks.</div>`;
+        else div.innerHTML = `<div><strong>${a.type.toUpperCase()}</strong> — ${a.prob.toFixed(2)}%</div><div class="small">Based on last ${ticksBuffer.length} ticks.</div>`;
+        alertsEl.appendChild(div);
+      });
+    }
+
+    // WebSocket handling
+    function connect() {
+      if (ws && ws.readyState === WebSocket.OPEN) return;
+      wsStateEl.textContent = 'connecting...';
+      try {
+        ws = new WebSocket(endpoint);
+      } catch (e) {
+        wsStateEl.textContent = 'error';
+        lastRespEl.textContent = 'Failed to open WebSocket: ' + e.message;
+        return;
+      }
+      ws.addEventListener('open', ()=> {
+        wsStateEl.textContent = 'connected';
+        connectBtn.disabled = true; disconnectBtn.disabled = false;
+        subscribeTicks();
+        reconnectDelay = 1000;
+      });
+      ws.addEventListener('message', ev => {
+        try {
+          const msg = JSON.parse(ev.data);
+          lastRespEl.textContent = JSON.stringify(msg).slice(0,1000);
+          if (msg.error) {
+            lastRespEl.textContent = 'API error: ' + (msg.error.message || JSON.stringify(msg.error));
+            return;
+          }
+          if (msg.tick) handleTickMessage(msg.tick);
+          if (msg.history) handleHistory(msg.history);
+        } catch (e) {
+          lastRespEl.textContent = 'Bad JSON: ' + String(ev.data).slice(0,500);
+        }
+      });
+      ws.addEventListener('close', ()=> {
+        wsStateEl.textContent = 'closed';
+        connectBtn.disabled = false; disconnectBtn.disabled = true;
+        if (autoReconnect) setTimeout(()=>connect(), 1500);
+      });
+      ws.addEventListener('error', (e)=> {
+        wsStateEl.textContent = 'error';
+        lastRespEl.textContent = 'WebSocket error';
+      });
+    }
+
+    function disconnect() {
+      autoReconnect = false; localStorage.setItem('dda_autoreconnect','false');
+      if (ws) try { ws.close(); } catch(e){}
+      ws = null;
+      wsStateEl.textContent = 'disconnected';
+      connectBtn.disabled = false; disconnectBtn.disabled = true;
+    }
+
+    function subscribeTicks() {
+      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+      const symbol = marketEl.value.trim();
+      if (!symbol) return;
+      try { ws.send(JSON.stringify({ forget: 'ticks' })); } catch(e){}
+      ws.send(JSON.stringify({ ticks: symbol, subscribe: 1 }));
+      localStorage.setItem('dda_market', symbol);
+    }
+
+    function requestHistory() {
+      if (!ws || ws.readyState !== WebSocket.OPEN) { alert('Connect first'); return; }
+      const symbol = marketEl.value.trim();
+      const count = bufferSize;
+      ws.send(JSON.stringify({ ticks_history: symbol, count: count, end: 'latest', style: 'ticks' }));
+    }
+
+    function handleTickMessage(tick) {
+      const lastDigit = extractLastDigit(tick.quote);
+      if (lastDigit === null) return;
+      pushTick(tick.quote, tick.epoch);
+    }
+    function handleHistory(history){
+      const prices = history.prices || [];
+      const times = history.times || [];
+      ticksBuffer = [];
+      for (let i=0; i<prices.length; i++){
+        const epoch = (Array.isArray(times) && times[i]) ? Number(times[i]) : Math.floor(Date.now()/1000);
+        ticksBuffer.push({ quote:String(prices[i]), epoch });
+      }
+      if (ticksBuffer.length > bufferSize) ticksBuffer.splice(0, ticksBuffer.length - bufferSize);
+      scheduleRender(true);
+    }
+
+    // Exports & UI events
+    function exportCsv() {
+      if (!ticksBuffer.length) { alert('No ticks'); return; }
+      const rows = [['iso','epoch','quote','last_digit']];
+      ticksBuffer.forEach(t => rows.push([new Date(t.epoch*1000).toISOString(), t.epoch, t.quote, extractLastDigit(t.quote)]));
+      const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+      download(csv, 'dda_ticks.csv', 'text/csv');
+    }
+    function exportJson() {
+      if (!ticksBuffer.length) { alert('No ticks'); return; }
+      const data = { generated_at: new Date().toISOString(), symbol: marketEl.value, ticks: ticksBuffer };
+      download(JSON.stringify(data,null,2), 'dda_ticks.json', 'application/json');
+    }
+    function download(content, filename, mime) {
+      const blob = new Blob([content], { type: mime });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = filename; document.body.appendChild(a); a.click();
+      setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 3000);
+    }
+
+    // UI listeners
+    connectBtn.addEventListener('click', () => { autoReconnect = true; localStorage.setItem('dda_autoreconnect','true'); connect(); });
+    disconnectBtn.addEventListener('click', disconnect);
+    historyBtn.addEventListener('click', requestHistory);
+    marketEl.addEventListener('change', ()=> { localStorage.setItem('dda_market', marketEl.value); if (ws && ws.readyState === WebSocket.OPEN) subscribeTicks(); });
+    bufferEl.addEventListener('change', e => { bufferSize = Number(e.target.value)||1000; displayBufferEl.textContent = bufferSize; localStorage.setItem('dda_buffer', String(bufferSize)); if (ticksBuffer.length > bufferSize) ticksBuffer.splice(0, ticksBuffer.length - bufferSize); scheduleRender(true); });
+    thresholdEl.addEventListener('change', ()=> { localStorage.setItem('dda_threshold', thresholdEl.value); scheduleRender(true); });
+    exportCsvBtn.addEventListener('click', exportCsv);
+    exportJsonBtn.addEventListener('click', exportJson);
+    clearBufferBtn.addEventListener('click', ()=> { if (confirm('Clear buffer?')) clearBuffer(); });
+    themeToggle.addEventListener('change', (e)=> { document.body.setAttribute('data-theme', e.target.value); localStorage.setItem('dda_theme', e.target.value); });
+
+    // initial render
+    scheduleRender(true);
+
+    // expose for debugging
+    window.DDA = { connect, disconnect, getBuffer: ()=>ticksBuffer.slice() };
+  })();
   </script>
 </body>
 </html>
