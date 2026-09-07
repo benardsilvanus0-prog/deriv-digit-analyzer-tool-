@@ -552,12 +552,11 @@
         lastRespEl.textContent = 'Failed to open WebSocket: ' + e.message;
         return;
       }
-      ws.addEventListener('open', () => {
-        console.log('[DDA] WebSocket opened');
-        wsStateEl.textContent = 'connected';
-        connectBtn.disabled = true; disconnectBtn.disabled = false;
-        // Request active symbols (brief) to populate markets automatically
-        try { ws.send(JSON.stringify({ active_symbols: 'brief' })); console.log('[DDA] requested active_symbols'); lastRespEl.textContent = '[DDA] requested active_symbols'; } catch(e){ console.warn('active_symbols send failed', e); }
+      ws.send(JSON.stringify({
+    active_symbols: "brief",
+    product_type: "basic",
+    req_id: 1
+}));
         // Note: subscribe will happen after active_symbols populates the dropdown
         reconnectDelay = 1000; // reset backoff
       });
