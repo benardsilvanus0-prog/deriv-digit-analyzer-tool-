@@ -120,7 +120,7 @@
         <div class="small">Status: <span id="wsState">disconnected</span></div>
         <div style="height:8px"></div>
         <div class="small">Last server message (truncated):</div>
-        <pre id="lastResp" style="white-space:pre-wrap;max-height:160px;overflow:auto;background:transparent;padding:6px;border-radius:6px;border:1px dashed rgba(255,255,255,0.02);margin-top:8px">—</pre>
+        <pre id="lastResp" style="white-space:pre-wrap;max-height:160px;overflow:auto;background:transparent;padding:6px;border-radius:6px;border:1px dashed rgba(255,255,255,0.02);margin-top:8px"></pre>
         <div class="debug">Console logs will also show debug traces.</div>
       </div>
 
@@ -411,12 +411,12 @@
         const x = pad + i*(barWidth + barGap);
         const y = H - pad - h;
         const pct = total? (c/total*100).toFixed(02) : '0.00';
-        inner += `<g><rect x="${x}" y="${y}" width="${barWidth}" height="${h}" rx="4" fill="url(#g${i})"></rect><text x="${x+barWidth/2}" y="${H-pad+14}" fill="#9aa4b2" font-size="12" text-anchor="middle">${i}</text><text x="${x+barWidth/2}" y="${y-6}" fill="#cdefff" font-size="11" text-anchor="middle">${pct}%</text></g>`;
+        inner += `<g><rect x="${x}" y="${y}" width="${barWidth}" height="${h}" rx="4" fill="url(#g${i})"></rect><text x="${x+barWidth/2}" y="${H-pad+14}" fill="#9aa4b2" font-size="12" text-anchor="middle">${i}</text></g>`;
       }
       // build gradients defs
       let defs = '';
       for (let i=0;i<=9;i++){
-        defs += `<linearGradient id="g${i}" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="${i%2? '#60a5fa':'#7dd3fc'}" stop-opacity="0.95"/><stop offset="100%" stop-color="#0b1220" stop-opacity="0.35"/></linearGradient>`;
+        defs += `<linearGradient id="g${i}" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="${i%2? '#60a5fa':'#7dd3fc'}" stop-opacity="0.95"/><stop offset="100%" stop-color="#0b1220" stop-opacity="0.4"/></linearGradient>`;
       }
       svg.innerHTML = `<defs>${defs}</defs><rect x="0" y="0" width="${W}" height="${H}" fill="transparent"></rect>${inner}`;
     }
@@ -552,13 +552,21 @@
         lastRespEl.textContent = 'Failed to open WebSocket: ' + e.message;
         return;
       }
-      ws.send(JSON.stringify({
-    active_symbols: "brief",
-    product_type: "basic",
-    req_id: 1
-}));
-        // Note: subscribe will happen after active_symbols populates the dropdown
-        reconnectDelay = 1000; // reset backoff
+      ws.addEventListener('open', () => {
+        try {
+          wsStateEl.textContent = 'connected';
+          connectBtn.disabled = true; disconnectBtn.disabled = false;
+          ws.send(JSON.stringify({
+            active_symbols: "brief",
+            product_type: "basic",
+            req_id: 1
+          }));
+          // Note: subscribe will happen after active_symbols populates the dropdown
+          reconnectDelay = 1000; // reset backoff
+        } catch (err) {
+          console.error('[DDA] error in open handler', err);
+          lastRespEl.textContent = 'Error sending active_symbols: ' + err.message;
+        }
       });
       ws.addEventListener('message', (ev) => {
         try {
@@ -673,7 +681,7 @@
     connectBtn.addEventListener('click', () => { autoReconnect = true; localStorage.setItem('dda_autoreconnect','true'); connect(); });
     disconnectBtn.addEventListener('click', disconnect);
     historyBtn.addEventListener('click', requestHistory);
-    marketEl.addEventListener('change', ()=> { localStorage.setItem('dda_market', marketEl.value); if (ws && ws.readyState === WebSocket.OPEN) { subscribeTicks(); setTimeout(()=>requestHistory(), 200); } });
+    marketEl.addEventListener('change', ()=> { localStorage.setItem('dda_market', marketEl.value); if (ws && ws.readyState === WebSocket.OPEN) { subscribeTicks(); setTimeout(()=>requestHistory(), 100); } });
     bufferEl.addEventListener('change', e => { bufferSize = Number(e.target.value)||1000; displayBufferEl.textContent = bufferSize; localStorage.setItem('dda_buffer', String(bufferSize)); if (ticksBuffer.length > bufferSize) ticksBuffer.splice(0, ticksBuffer.length - bufferSize); scheduleRender(true); });
     thresholdEl.addEventListener('change', ()=> { localStorage.setItem('dda_threshold', thresholdEl.value); scheduleRender(true); });
     exportCsvBtn.addEventListener('click', exportCsv);
